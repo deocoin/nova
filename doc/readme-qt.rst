@@ -1,4 +1,4 @@
-Litecoin-Qt: Qt4 GUI for Litecoin
+DarkCoin-Qt: Qt4 GUI for DarkCoin
 ===============================
 
 Build instructions
@@ -41,9 +41,9 @@ then execute the following:
     qmake
     make
 
-Alternatively, install `Qt Creator`_ and open the `litecoin-qt.pro` file.
+Alternatively, install `Qt Creator`_ and open the `darkcoin-qt.pro` file.
 
-An executable named `litecoin-qt` will be built.
+An executable named `darkcoin-qt` will be built.
 
 .. _`Qt Creator`: http://qt-project.org/downloads/
 
@@ -68,11 +68,26 @@ Mac OS X
 	brew update
 	brew install boost miniupnpc openssl berkeley-db4
 
-- If using HomeBrew,  edit `litecoin-qt.pro` to account for library location differences. There's a diff in `contrib/homebrew/bitcoin-qt-pro.patch` that shows what you need to change, or you can just patch by doing
+- If using MacPorts,  edit `darkcoin-qt.pro` to account for library location differences. 
 
-        patch -p1 < contrib/homebrew/bitcoin.qt.pro.patch
+::
 
-- Open the litecoin-qt.pro file in Qt Creator and build as normal (cmd-B)
+  macx:BDB_LIB_PATH = /opt/local/lib/db48
+  macx:BDB_INCLUDE_PATH = /opt/local/include/db48
+  macx:BOOST_LIB_PATH = /opt/local/lib
+  macx:BOOST_INCLUDE_PATH = /opt/local/include
+
+  The following lines can also be removed.
+  
+  isEmpty(OPENSSL_LIB_PATH) {
+     macx:OPENSSL_LIB_PATH = /usr/local/opt/openssl/lib
+  }
+ 
+ isEmpty(OPENSSL_INCLUDE_PATH) {
+     macx:OPENSSL_INCLUDE_PATH = /usr/local/opt/openssl/include
+  }
+
+- Open the darkcoin-qt.pro file in Qt Creator and build as normal (cmd-B)
 
 .. _`Qt Mac OS X SDK`: http://qt-project.org/downloads/
 .. _`MacPorts`: http://www.macports.org/install.php
@@ -85,7 +100,7 @@ Build configuration options
 UPnP port forwarding
 ---------------------
 
-To use UPnP for port forwarding behind a NAT router (recommended, as more connections overall allow for a faster and more stable litecoin experience), pass the following argument to qmake:
+To use UPnP for port forwarding behind a NAT router (recommended, as more connections overall allow for a faster and more stable darkcoin experience), pass the following argument to qmake:
 
 ::
 
@@ -133,9 +148,9 @@ flag to qmake to control this:
 Berkely DB version warning
 ==========================
 
-A warning for people using the *static binary* version of Litecoin on a Linux/UNIX-ish system (tl;dr: **Berkely DB databases are not forward compatible**).
+A warning for people using the *static binary* version of DarkCoin on a Linux/UNIX-ish system (tl;dr: **Berkely DB databases are not forward compatible**).
 
-The static binary version of Litecoin is linked against libdb4.8 (see also `this Debian issue`_).
+The static binary version of DarkCoin is linked against libdb4.8 (see also `this Debian issue`_).
 
 Now the nasty thing is that databases from 5.X are not compatible with 4.X.
 
@@ -150,7 +165,7 @@ Ubuntu 11.10 warning
 ====================
 
 Ubuntu 11.10 has a package called 'qt-at-spi' installed by default.  At the time of writing, having that package
-installed causes litecoin-qt to crash intermittently.  The issue has been reported as `launchpad bug 857790`_, but
+installed causes darkcoin-qt to crash intermittently.  The issue has been reported as `launchpad bug 857790`_, but
 isn't yet fixed.
 
 Until the bug is fixed, you can remove the qt-at-spi package to work around the problem, though this will presumably

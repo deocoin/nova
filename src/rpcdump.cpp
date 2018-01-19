@@ -9,8 +9,6 @@
 
 #include <boost/lexical_cast.hpp>
 
-#define printf OutputDebugStringF
-
 using namespace json_spirit;
 using namespace std;
 
@@ -36,7 +34,7 @@ Value importprivkey(const Array& params, bool fHelp)
 {
     if (fHelp || params.size() < 1 || params.size() > 3)
         throw runtime_error(
-            "importprivkey <litecoinprivkey> [label] [rescan=true]\n"
+            "importprivkey <darkcoinprivkey> [label] [rescan=true]\n"
             "Adds a private key (as returned by dumpprivkey) to your wallet.");
 
     string strSecret = params[0].get_str();
@@ -79,13 +77,13 @@ Value dumpprivkey(const Array& params, bool fHelp)
 {
     if (fHelp || params.size() != 1)
         throw runtime_error(
-            "dumpprivkey <litecoinaddress>\n"
-            "Reveals the private key corresponding to <litecoinaddress>.");
+            "dumpprivkey <darkcoinaddress>\n"
+            "Reveals the private key corresponding to <darkcoinaddress>.");
 
     string strAddress = params[0].get_str();
     CBitcoinAddress address;
     if (!address.SetString(strAddress))
-        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid Litecoin address");
+        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid DarkCoin address");
     CKeyID keyID;
     if (!address.GetKeyID(keyID))
         throw JSONRPCError(RPC_TYPE_ERROR, "Address does not refer to a key");

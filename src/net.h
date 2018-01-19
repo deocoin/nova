@@ -20,6 +20,7 @@
 #include "protocol.h"
 #include "addrman.h"
 #include "hash.h"
+#include "key.h"
 #include "bloom.h"
 
 class CNode;
@@ -44,6 +45,8 @@ bool BindListenPort(const CService &bindAddr, std::string& strError=REF(std::str
 void StartNode(boost::thread_group& threadGroup);
 bool StopNode();
 void SocketSendData(CNode *pnode);
+
+typedef int NodeId;
 
 enum
 {
@@ -86,7 +89,8 @@ extern limitedmap<CInv, int64> mapAlreadyAskedFor;
 extern std::vector<std::string> vAddedNodes;
 extern CCriticalSection cs_vAddedNodes;
 
-
+extern NodeId nLastNodeId;
+extern CCriticalSection cs_nLastNodeId;
 
 
 class CNodeStats
@@ -190,6 +194,7 @@ public:
     bool fNetworkNode;
     bool fSuccessfullyConnected;
     bool fDisconnect;
+    bool fAskedForBlocks;    // true when getblocks 0 sent
     // We use fRelayTxes for two purposes -
     // a) it allows us to not relay tx invs before receiving the peer's version message
     // b) the peer may tell us in their version message that we should not relay tx invs
@@ -199,6 +204,7 @@ public:
     CCriticalSection cs_filter;
     CBloomFilter* pfilter;
     int nRefCount;
+    NodeId id;
 protected:
 
     // Denial-of-service detection/prevention
@@ -219,6 +225,7 @@ public:
     std::set<CAddress> setAddrKnown;
     bool fGetAddr;
     std::set<uint256> setKnown;
+    uint256 hashCheckpointKnown;
 
     // inventory based relay
     mruset<CInv> setInventoryKnown;
@@ -248,6 +255,8 @@ public:
         fNetworkNode = false;
         fSuccessfullyConnected = false;
         fDisconnect = false;
+        hashCheckpointKnown = 0;
+        fAskedForBlocks = false;
         nRefCount = 0;
         nSendSize = 0;
         nSendOffset = 0;
@@ -261,6 +270,11 @@ public:
         fRelayTxes = false;
         setInventoryKnown.max_size(SendBufferSize() / 1000);
         pfilter = new CBloomFilter();
+
+        {
+            LOCK(cs_nLastNodeId);
+            id = nLastNodeId++;
+        }
 
         // Be shy and don't send version until we hear
         if (hSocket != INVALID_SOCKET && !fInbound)
@@ -366,7 +380,7 @@ public:
         else
             nRequestTime = 0;
         if (fDebugNet)
-            printf("askfor %s   %"PRI64d" (%s)\n", inv.ToString().c_str(), nRequestTime, DateTimeStrFormat("%H:%M:%S", nRequestTime/1000000).c_str());
+            LogPrintf("askfor %s   %"PRI64d" (%s)\n", inv.ToString().c_str(), nRequestTime, DateTimeStrFormat("%H:%M:%S", nRequestTime/1000000).c_str());
 
         // Make sure not to reuse time indexes to keep things in the same order
         int64 nNow = (GetTime() - 1) * 1000000;
@@ -392,8 +406,7 @@ public:
         ENTER_CRITICAL_SECTION(cs_vSend);
         assert(ssSend.size() == 0);
         ssSend << CMessageHeader(pszCommand, 0);
-        if (fDebug)
-            printf("sending: %s ", pszCommand);
+        LogPrint("net2", "sending (peer=%d): %s ", id, pszCommand);
     }
 
     // TODO: Document the precondition of this function.  Is cs_vSend locked?
@@ -403,8 +416,7 @@ public:
 
         LEAVE_CRITICAL_SECTION(cs_vSend);
 
-        if (fDebug)
-            printf("(aborted)\n");
+        LogPrint("net2", "(aborted)\n");
     }
 
     // TODO: Document the precondition of this function.  Is cs_vSend locked?
@@ -412,7 +424,7 @@ public:
     {
         if (mapArgs.count("-dropmessagestest") && GetRand(atoi(mapArgs["-dropmessagestest"])) == 0)
         {
-            printf("dropmessages DROPPING SEND MESSAGE\n");
+            LogPrintf("dropmessages DROPPING SEND MESSAGE\n");
             AbortMessage();
             return;
         }
@@ -431,9 +443,7 @@ public:
         assert(ssSend.size () >= CMessageHeader::CHECKSUM_OFFSET + sizeof(nChecksum));
         memcpy((char*)&ssSend[CMessageHeader::CHECKSUM_OFFSET], &nChecksum, sizeof(nChecksum));
 
-        if (fDebug) {
-            printf("(%d bytes)\n", nSize);
-        }
+        LogPrint("net2", "(%d bytes)\n", nSize);
 
         std::deque<CSerializeData>::iterator it = vSendMsg.insert(vSendMsg.end(), CSerializeData());
         ssSend.GetAndClear(*it);
@@ -607,7 +617,7 @@ public:
         }
     }
 
-    void PushGetBlocks(CBlockIndex* pindexBegin, uint256 hashEnd);
+    bool PushGetBlocks(CBlockIndex* pindexBegin, uint256 hashEnd);
     bool IsSubscribed(unsigned int nChannel);
     void Subscribe(unsigned int nChannel, unsigned int nHops=0);
     void CancelSubscribe(unsigned int nChannel);
@@ -638,7 +648,12 @@ public:
 
 
 class CTransaction;
+class CTxIn;
+class CTxOut;
 void RelayTransaction(const CTransaction& tx, const uint256& hash);
 void RelayTransaction(const CTransaction& tx, const uint256& hash, const CDataStream& ss);
+void RelayDarkSendElectionEntry(const CTxIn vin, const CService addr, const std::vector<unsigned char> vchSig, const int64 nNow, const CPubKey pubkey, const CPubKey pubkey2, const int count, const int current, const int64 lastUpdated);
+void RelayDarkSendElectionEntryPing(const CTxIn vin, const std::vector<unsigned char> vchSig, const int64 nNow, const bool stop);
+void RelayDarkSendMasterNodeConsessusVote(const CTxIn inWinningMasternode, const CTxIn inFromMasternode, const int64 nBlockHeight, const std::vector<unsigned char>& vchSig);
 
 #endif
